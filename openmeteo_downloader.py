@@ -137,25 +137,30 @@ class OpenMeteoDownloader:
             "longitude": self.longitude,
             "start_date": self.start_date,
             "end_date": self.end_date,
-            "hourly": ",".join(hourly_vars),
-            "daily": ",".join(daily_vars),
             "timezone": timezone,
             "temperature_unit": temperature_unit,
             "wind_speed_unit": wind_speed_unit,
             "precipitation_unit": precipitation_unit
         }
+        # Add 'hourly' only if requested
+        if hourly_vars:
+            params["hourly"] = ",".join(hourly_vars)
+        # Add 'daily' always (empty list = no daily)
+        params["daily"] = ",".join(daily_vars) if daily_vars is not None else ""
         
         logger.info(f"Downloading data for {self.year} at ({self.latitude}, {self.longitude})")
         logger.info(f"Date range: {self.start_date} to {self.end_date}")
-        
+
+        # Log the full request URL
+        req = requests.Request('GET', self.BASE_URL, params=params).prepare()
+        logger.info(f"Request URL: {req.url}")
+
         try:
             response = requests.get(self.BASE_URL, params=params)
             response.raise_for_status()
-            
             data = response.json()
             logger.info("Data downloaded successfully")
             return data
-            
         except requests.exceptions.RequestException as e:
             logger.error(f"Error downloading data: {e}")
             raise
@@ -369,50 +374,89 @@ def combine_chunks(chunks: List[Dict]) -> Dict:
 
 def main():
     """Main function with command-line interface"""
+
     parser = argparse.ArgumentParser(
         description='Download historical weather data from Open-Meteo API'
     )
-    
-    parser.add_argument('latitude', type=float, 
-                       help='Latitude of the location')
-    parser.add_argument('longitude', type=float, 
-                       help='Longitude of the location')
-    parser.add_argument('year', type=int, 
-                       help='Year to download data for')
-    
-    parser.add_argument('--output-dir', type=str, default='weather_data',
-                       help='Directory to save the downloaded data')
-    parser.add_argument('--formats', nargs='+', default=['json', 'csv'],
-                       choices=['json', 'csv'],
-                       help='Output formats (default: json csv)')
-    parser.add_argument('--timezone', type=str, default='auto',
-                       help='Timezone for the data (default: auto)')
-    parser.add_argument('--temperature-unit', type=str, default='celsius',
-                       choices=['celsius', 'fahrenheit'],
-                       help='Temperature unit (default: celsius)')
-    parser.add_argument('--wind-speed-unit', type=str, default='kmh',
-                       choices=['kmh', 'ms', 'mph', 'kn'],
-                       help='Wind speed unit (default: kmh)')
-    parser.add_argument('--precipitation-unit', type=str, default='mm',
-                       choices=['mm', 'inch'],
-                       help='Precipitation unit (default: mm)')
-    parser.add_argument('--chunked', action='store_true',
-                       help='Download data in chunks (useful for large requests)')
-    parser.add_argument('--chunk-size', type=int, default=3,
-                       help='Number of months per chunk (default: 3)')
-    
+
+    parser.add_argument('latitude', type=float, help='Latitude of the location')
+    parser.add_argument('longitude', type=float, help='Longitude of the location')
+    parser.add_argument('year', type=int, help='Year to download data for')
+
+    parser.add_argument('--output-dir', type=str, default='weather_data', help='Directory to save the downloaded data')
+    parser.add_argument('--formats', nargs='+', default=['json', 'csv'], choices=['json', 'csv'], help='Output formats (default: json csv)')
+    parser.add_argument('--timezone', type=str, default='auto', help='Timezone for the data (default: auto)')
+    parser.add_argument('--temperature-unit', type=str, default='celsius', choices=['celsius', 'fahrenheit'], help='Temperature unit (default: celsius)')
+    parser.add_argument('--wind-speed-unit', type=str, default='kmh', choices=['kmh', 'ms', 'mph', 'kn'], help='Wind speed unit (default: kmh)')
+    parser.add_argument('--precipitation-unit', type=str, default='mm', choices=['mm', 'inch'], help='Precipitation unit (default: mm)')
+
+    parser.add_argument('--chunked', action='store_true', help='Download data in chunks (useful for large requests)')
+    parser.add_argument('--chunk-size', type=int, default=3, help='Number of months per chunk (default: 3)')
+
+    # Mutually exclusive group for --no-hourly and --no-daily
+    group = parser.add_mutually_exclusive_group()
+    group.add_argument('--no-hourly', action='store_true', help='Exclude hourly data from download')
+    group.add_argument('--no-daily', action='store_true', help='Exclude daily data from download')
+
+    parser.add_argument('--save-metadata', action='store_true', help='Save metadata file (default: do not save)')
+
     args = parser.parse_args()
-    
+
     logger.info(f"Starting download for year {args.year} at coordinates ({args.latitude}, {args.longitude})")
-    
+
+    # Determine which variables to download based on flags
+    hourly_vars = None if not args.no_hourly else []
+    daily_vars = None if not args.no_daily else []
+
     if args.chunked:
         # Download in chunks
-        download_chunked(
+        def patched_download_chunked(latitude, longitude, year, output_dir="weather_data", chunk_size_months=3, hourly_vars=None, daily_vars=None, **kwargs):
+            all_data = []
+            for month_start in range(1, 13, chunk_size_months):
+                month_end = min(month_start + chunk_size_months - 1, 12)
+                start_date = f"{year}-{month_start:02d}-01"
+                if month_end == 12:
+                    end_date = f"{year}-12-31"
+                else:
+                    next_month = datetime(year, month_end + 1, 1)
+                    last_day = (next_month - timedelta(days=1)).day
+                    end_date = f"{year}-{month_end:02d}-{last_day:02d}"
+                logger.info(f"Downloading chunk: {start_date} to {end_date}")
+                temp_downloader = OpenMeteoDownloader(latitude, longitude, year, output_dir)
+                temp_downloader.start_date = start_date
+                temp_downloader.end_date = end_date
+                try:
+                    data = temp_downloader.download_data(hourly_vars=hourly_vars, daily_vars=daily_vars, timezone=args.timezone, temperature_unit=args.temperature_unit, wind_speed_unit=args.wind_speed_unit, precipitation_unit=args.precipitation_unit)
+                    all_data.append(data)
+                    time.sleep(1)
+                except Exception as e:
+                    logger.error(f"Error downloading chunk {start_date} to {end_date}: {e}")
+                    continue
+            if all_data:
+                combined_data = combine_chunks(all_data)
+                downloader = OpenMeteoDownloader(latitude, longitude, year, output_dir)
+                if 'json' in args.formats:
+                    downloader.save_to_json(combined_data)
+                if 'csv' in args.formats:
+                    if not args.no_hourly:
+                        downloader.save_hourly_to_csv(combined_data)
+                    if not args.no_daily:
+                        downloader.save_daily_to_csv(combined_data)
+                if args.save_metadata:
+                    downloader.save_metadata(combined_data)
+                logger.info("All chunks downloaded and combined successfully")
+                return combined_data
+            else:
+                logger.error("No data was successfully downloaded")
+                return None
+        patched_download_chunked(
             args.latitude,
             args.longitude,
             args.year,
             args.output_dir,
-            args.chunk_size
+            args.chunk_size,
+            hourly_vars=hourly_vars,
+            daily_vars=daily_vars
         )
     else:
         # Download entire year at once
@@ -422,15 +466,24 @@ def main():
             args.year,
             args.output_dir
         )
-        
-        downloader.download_and_save_all(
-            formats=args.formats,
+        data = downloader.download_data(
+            hourly_vars=hourly_vars,
+            daily_vars=daily_vars,
             timezone=args.timezone,
             temperature_unit=args.temperature_unit,
             wind_speed_unit=args.wind_speed_unit,
             precipitation_unit=args.precipitation_unit
         )
-    
+        if 'json' in args.formats:
+            downloader.save_to_json(data)
+        if 'csv' in args.formats:
+            if not args.no_hourly:
+                downloader.save_hourly_to_csv(data)
+            if not args.no_daily:
+                downloader.save_daily_to_csv(data)
+        if args.save_metadata:
+            downloader.save_metadata(data)
+
     logger.info("Download completed successfully!")
 
 

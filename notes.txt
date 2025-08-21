@@ -1,4 +1,15 @@
 latitude=41.837610&longitude=12.831867
 
 
-python openmeteo_downloader.py 41.837610 12.831867 2024
+python openmeteo_downloader.py 41.837610 12.831867 2024 --no-hourly --formats json
+
+
+python create_weather_db.py weather.db
+python import_weather_json_to_sqlite.py weather_data/weather_2024_41.83761_12.831867.json weather.db
+
+sqlite3 weather.db
+
+SELECT time, temperature_2m_max
+FROM daily
+ORDER BY temperature_2m_max DESC
+LIMIT 1;
