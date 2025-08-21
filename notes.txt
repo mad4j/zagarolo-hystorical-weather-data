@@ -1,0 +1,4 @@
+latitude=41.837610&longitude=12.831867
+
+
+python openmeteo_downloader.py 41.837610 12.831867 2024
