@@ -251,6 +251,56 @@ class OpenMeteoDownloader:
         
         logger.info(f"Metadata saved to {filepath}")
         
+    def check_existing_files(self, formats: List[str] = ['json', 'csv'], 
+                            save_metadata: bool = False, 
+                            include_hourly: bool = True,
+                            include_daily: bool = True) -> List[str]:
+        """
+        Check which files already exist for this download configuration
+        
+        Args:
+            formats: List of formats to check ('json', 'csv')
+            save_metadata: Whether metadata file would be saved
+            include_hourly: Whether hourly data would be included
+            include_daily: Whether daily data would be included
+            
+        Returns:
+            List of existing file paths
+        """
+        existing_files = []
+        
+        # Check JSON file
+        if 'json' in formats:
+            json_filename = f"weather_{self.year}_{self.latitude}_{self.longitude}.json"
+            json_filepath = os.path.join(self.output_dir, json_filename)
+            if os.path.exists(json_filepath):
+                existing_files.append(json_filepath)
+        
+        # Check CSV files
+        if 'csv' in formats:
+            # Check hourly CSV (only if hourly data is included)
+            if include_hourly:
+                hourly_filename = f"weather_hourly_{self.year}_{self.latitude}_{self.longitude}.csv"
+                hourly_filepath = os.path.join(self.output_dir, hourly_filename)
+                if os.path.exists(hourly_filepath):
+                    existing_files.append(hourly_filepath)
+                
+            # Check daily CSV (only if daily data is included)
+            if include_daily:
+                daily_filename = f"weather_daily_{self.year}_{self.latitude}_{self.longitude}.csv"
+                daily_filepath = os.path.join(self.output_dir, daily_filename)
+                if os.path.exists(daily_filepath):
+                    existing_files.append(daily_filepath)
+        
+        # Check metadata file
+        if save_metadata:
+            metadata_filename = f"weather_metadata_{self.year}_{self.latitude}_{self.longitude}.json"
+            metadata_filepath = os.path.join(self.output_dir, metadata_filename)
+            if os.path.exists(metadata_filepath):
+                existing_files.append(metadata_filepath)
+        
+        return existing_files
+        
     def download_and_save_all(self, 
                              formats: List[str] = ['json', 'csv'],
                              **kwargs):
@@ -399,6 +449,7 @@ def main():
     group.add_argument('--no-daily', action='store_true', help='Exclude daily data from download')
 
     parser.add_argument('--save-metadata', action='store_true', help='Save metadata file (default: do not save)')
+    parser.add_argument('--force', action='store_true', help='Force download even if files already exist')
 
     args = parser.parse_args()
 
@@ -409,6 +460,25 @@ def main():
     daily_vars = None if not args.no_daily else []
 
     if args.chunked:
+        # Check for existing files first unless force is specified
+        if not args.force:
+            downloader = OpenMeteoDownloader(
+                args.latitude,
+                args.longitude,
+                args.year,
+                args.output_dir
+            )
+            existing_files = downloader.check_existing_files(
+                formats=args.formats,
+                save_metadata=args.save_metadata,
+                include_hourly=not args.no_hourly,
+                include_daily=not args.no_daily
+            )
+            if existing_files:
+                logger.info(f"Skipping download - files already exist: {existing_files}")
+                logger.info("Use --force to override and download anyway")
+                return
+        
         # Download in chunks
         def patched_download_chunked(latitude, longitude, year, output_dir="weather_data", chunk_size_months=3, hourly_vars=None, daily_vars=None, **kwargs):
             all_data = []
@@ -459,6 +529,25 @@ def main():
             daily_vars=daily_vars
         )
     else:
+        # Check for existing files first unless force is specified
+        if not args.force:
+            downloader = OpenMeteoDownloader(
+                args.latitude,
+                args.longitude,
+                args.year,
+                args.output_dir
+            )
+            existing_files = downloader.check_existing_files(
+                formats=args.formats,
+                save_metadata=args.save_metadata,
+                include_hourly=not args.no_hourly,
+                include_daily=not args.no_daily
+            )
+            if existing_files:
+                logger.info(f"Skipping download - files already exist: {existing_files}")
+                logger.info("Use --force to override and download anyway")
+                return
+        
         # Download entire year at once
         downloader = OpenMeteoDownloader(
             args.latitude,
