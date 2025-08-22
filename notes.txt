@@ -16,9 +16,14 @@ FROM daily
 ORDER BY temperature_2m_max DESC
 LIMIT 10;
 
+SELECT time, apparent_temperature_max
+FROM daily
+ORDER BY apparent_temperature_max DESC
+LIMIT 10;
+
 SELECT time, temperature_2m_max, temperature_2m_min
 FROM daily
-ORDER BY temperature_2m_max DESC, temperature_2m_min
+ORDER BY temperature_2m_max DESC, temperature_2m_min DESC
 LIMIT 10;
 
 SELECT time, temperature_2m_min
