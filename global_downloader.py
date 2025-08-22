@@ -11,6 +11,8 @@ import subprocess
 import sys
 import os
 import logging
+import time
+import random
 from datetime import datetime
 from typing import Optional
 import argparse
@@ -33,13 +35,15 @@ class GlobalDownloader:
                  latitude: float = DEFAULT_LATITUDE, 
                  longitude: float = DEFAULT_LONGITUDE,
                  output_dir: str = "weather_data",
-                 start_year: int = START_YEAR):
+                 start_year: int = START_YEAR,
+                 enable_pause: bool = True):
         self.latitude = latitude
         self.longitude = longitude
         self.output_dir = output_dir
         self.start_year = start_year
         self.current_year = datetime.now().year
         self.downloader_script = "openmeteo_downloader.py"
+        self.enable_pause = enable_pause
         
         # Ensure output directory exists
         os.makedirs(self.output_dir, exist_ok=True)
@@ -126,6 +130,12 @@ class GlobalDownloader:
                 progress = (completed / total_years) * 100
                 logger.info(f"Progresso: {completed}/{total_years} anni ({progress:.1f}%)")
                 
+                # Add variable pause between downloads (except for the last year)
+                if self.enable_pause and completed < total_years:
+                    pause_time = random.randint(5, 35)
+                    logger.info(f"Pausa di {pause_time} secondi prima del prossimo download...")
+                    time.sleep(pause_time)
+                
             except KeyboardInterrupt:
                 logger.info("Download interrotto dall'utente")
                 break
@@ -175,6 +185,7 @@ Esempi:
   %(prog)s --end-year 2020          # Scarica dal 1945 al 2020
   %(prog)s --resume-from 2010       # Riprende dal 2010
   %(prog)s --check-existing         # Mostra solo gli anni già scaricati
+  %(prog)s --no-pause              # Disabilita la pausa tra download
         """
     )
     
@@ -202,6 +213,9 @@ Esempi:
     parser.add_argument('--check-existing', action='store_true',
                        help='Mostra gli anni già scaricati e esce')
     
+    parser.add_argument('--no-pause', action='store_true',
+                       help='Disabilita la pausa tra i download (utile per test)')
+    
     args = parser.parse_args()
     
     # Crea il downloader
@@ -209,7 +223,8 @@ Esempi:
         latitude=args.latitude,
         longitude=args.longitude,
         output_dir=args.output_dir,
-        start_year=args.start_year
+        start_year=args.start_year,
+        enable_pause=not args.no_pause
     )
     
     # Controlla file esistenti se richiesto

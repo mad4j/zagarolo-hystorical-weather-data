@@ -55,6 +55,7 @@ python global_downloader.py --latitude 45.0 --longitude 9.0
 - `--end-year`: Anno finale (default: anno corrente)
 - `--resume-from`: Anno da cui riprendere il download
 - `--check-existing`: Mostra solo gli anni già scaricati
+- `--no-pause`: Disabilita la pausa tra i download (utile per test)
 
 ## File di Output
 
@@ -80,6 +81,8 @@ Dipendenze Python richieste:
 - I file vengono salvati in formato JSON per facilità di elaborazione
 - Lo script gestisce automaticamente i timeout e gli errori di rete
 - È possibile interrompere il download con Ctrl+C e riprenderlo successivamente
+- **Pausa automatica**: Tra ogni anno viene applicata una pausa variabile di 5-35 secondi per rispettare l'API
+- Usa `--no-pause` per disabilitare le pause durante i test
 
 ## Esempio di Utilizzo Completo
 
@@ -92,4 +95,7 @@ python global_downloader.py
 
 # 3. Se il download si interrompe, riprendi dall'ultimo anno
 python global_downloader.py --resume-from 2020
+
+# 4. Scarica senza pause (utile per test con pochi anni)
+python global_downloader.py --start-year 2020 --end-year 2022 --no-pause
 ```
