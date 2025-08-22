@@ -125,7 +125,8 @@
                   yAxis: valuesPrecip[maxIdx],
                   symbol: 'pin',
                   itemStyle: { color: '#22c55e' },
-                  label: { formatter: 'MAX', color: '#fff', fontWeight: 'bold', fontSize: 10 }
+                  // Mostra l'anno come etichetta
+                  label: { formatter: years[maxIdx], color: '#fff', fontWeight: 'bold', fontSize: 10 }
                 },
                 {
                   name: 'Minimo',
@@ -134,7 +135,8 @@
                   yAxis: valuesPrecip[minIdx],
                   symbol: 'pin',
                   itemStyle: { color: '#ef4444' },
-                  label: { formatter: 'MIN', color: '#fff', fontWeight: 'bold', fontSize: 10 }
+                  // Mostra l'anno come etichetta
+                  label: { formatter: years[minIdx], color: '#fff', fontWeight: 'bold', fontSize: 10 }
                 }
               ]
             }
@@ -150,7 +152,25 @@
               borderWidth: 2 
             },
             barWidth: '60%',
-            emphasis: { focus: 'series' }
+            emphasis: { focus: 'series' },
+            markPoint: {
+              symbolSize: 48,
+              data: [
+                {
+                  name: 'Massimo Neve',
+                  value: maxNeve,
+                  xAxis: valuesNeve.indexOf(maxNeve),
+                  yAxis: maxNeve,
+                  symbol: 'pin',
+                  itemStyle: { 
+                    color: '#fff', 
+                    borderColor: '#444', // bordo meno marcato
+                    borderWidth: 1.5 
+                  },
+                  label: { formatter: years[valuesNeve.indexOf(maxNeve)], color: '#222', fontWeight: 'bold', fontSize: 10 }
+                }
+              ]
+            }
           }
         ];
 
@@ -200,7 +220,8 @@
                     yAxis: 1100,
                     symbol: 'pin',
                     itemStyle: { color: '#22c55e' },
-                    label: { formatter: 'MAX', color: '#fff', fontWeight: 'bold' }
+                    // Mostra l'anno come etichetta
+                    label: { formatter: '2022', color: '#fff', fontWeight: 'bold' }
                   },
                   {
                     name: 'Minimo',
@@ -209,7 +230,8 @@
                     yAxis: 700,
                     symbol: 'pin',
                     itemStyle: { color: '#ef4444' },
-                    label: { formatter: 'MIN', color: '#fff', fontWeight: 'bold' }
+                    // Mostra l'anno come etichetta
+                    label: { formatter: '2021', color: '#fff', fontWeight: 'bold' }
                   }
                 ]
               }
@@ -219,9 +241,29 @@
               type: 'bar',
               yAxisIndex: 1,
               data: [13, 0, 8, 0, 1, 3],
-              itemStyle: { color: '#6366f1' },
+              itemStyle: { 
+                color: '#6366f1' 
+              },
               barWidth: '60%',
-              emphasis: { focus: 'series' }
+              emphasis: { focus: 'series' },
+              markPoint: {
+                symbolSize: 48,
+                data: [
+                  {
+                    name: 'Massimo Neve',
+                    value: 13,
+                    xAxis: 0,
+                    yAxis: 13,
+                    symbol: 'pin',
+                    itemStyle: { 
+                      color: '#fff', 
+                      borderColor: '#444', // bordo meno marcato
+                      borderWidth: 1.5 
+                    },
+                    label: { formatter: '2019', color: '#222', fontWeight: 'bold', fontSize: 10 }
+                  }
+                ]
+              }
             }
           ]
         }, true);
