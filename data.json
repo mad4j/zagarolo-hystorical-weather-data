@@ -1,0 +1,8 @@
+{
+  "title": "Vendite settimanali",
+  "xAxis": ["Lun","Mar","Mer","Gio","Ven","Sab","Dom"],
+  "series": [
+    { "name": "Online",  "type": "line", "data": [120,132,101,134,90,230,210] },
+    { "name": "Negozio", "type": "line", "data": [220,182,191,234,290,330,310] }
+  ]
+}

@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+
 """
 Global Weather Data Downloader for Zagarolo
 Scarica dati meteo storici dal 1945 in poi utilizzando openmeteo_downloader.py

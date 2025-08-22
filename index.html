@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>ECharts + JSON esterno — esempio minimale</title>
+  <!-- ECharts v5 CDN -->
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
+  <style>
+    :root { --bg: #0b0f1a; --fg: #e6edf3; --muted:#9aa4b2; }
+    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
+    header { padding: 16px 20px; border-bottom: 1px solid #1e293b; display: flex; align-items: baseline; gap: 12px; }
+    h1 { font-size: 18px; margin: 0; }
+    .hint { color: var(--muted); font-size: 13px; }
+    #app { height: calc(100% - 60px); display: grid; grid-template-rows: 48px 1fr; }
+    #controls { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #1e293b; }
+    #status { font-size: 12px; color: var(--muted); }
+    #chart { width: 100%; height: 100%; }
+    button { background:#111827; color:var(--fg); border:1px solid #334155; border-radius:12px; padding:8px 12px; cursor:pointer; }
+    button:hover { background:#0f172a; }
+    code { background:#111827; padding:2px 6px; border-radius:6px; }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Precipitazioni annuali da <code>precipitations_per_year.json</code></h1>
+    <span class="hint">Servi questa pagina e il file <code>precipitations_per_year.json</code> dalla stessa origine.</span>
+  </header>
+
+  <div id="app">
+    <div id="controls">
+      <button id="reload">Ricarica dati</button>
+      <span id="status">Pronto.</span>
+    </div>
+    <div id="chart" role="img" aria-label="Grafico barre precipitazioni annuali"></div>
+  </div>
+
+  <script>
+    // ⬇️ Struttura attesa di precipitations_per_year.json:
+    // [
+    //   { "year": "2019", "total_precipitation": 800.5 },
+    //   { "year": "2020", "total_precipitation": 950.2 },
+    //   ...
+    // ]
+
+    const chartEl = document.getElementById('chart');
+    const statusEl = document.getElementById('status');
+    const reloadBtn = document.getElementById('reload');
+    const chart = echarts.init(chartEl, null, { renderer: 'canvas' });
+
+    function setStatus(msg) {
+      statusEl.textContent = msg;
+    }
+
+    function baseOption() {
+      return {
+        backgroundColor: 'transparent',
+        tooltip: { trigger: 'axis' },
+        legend: { show: false },
+        grid: { left: 48, right: 24, top: 48, bottom: 32 },
+        xAxis: { type: 'category', boundaryGap: true, axisTick: { show: false } },
+        yAxis: { type: 'value', name: 'mm', splitLine: { show: true } },
+        series: []
+      };
+    }
+
+    async function loadData(url = 'precipitations_per_year.json') {
+      setStatus('Caricamento dati…');
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const payload = await res.json();
+
+        // Estraggo anni e valori
+        const years = payload.map(row => row.year ?? row.anno);
+        const values = payload.map(row => row.total_precipitation ?? row.totale_precipitazioni);
+
+        // Trova indice max e min
+        const maxIdx = values.indexOf(Math.max(...values));
+        const minIdx = values.indexOf(Math.min(...values));
+
+        const option = baseOption();
+        option.title = { text: 'Precipitazioni totali per anno', left: 'center' };
+        option.xAxis.data = years;
+        option.series = [
+          {
+            name: 'Precipitazioni',
+            type: 'line',
+            data: values,
+            itemStyle: { color: '#38bdf8' },
+            lineStyle: { width: 3, color: '#38bdf8' },
+            symbol: 'circle',
+            symbolSize: 10,
+            smooth: true, // Linea curva
+            areaStyle: {
+              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                { offset: 0, color: 'rgba(56,189,248,0.5)' },
+                { offset: 1, color: 'rgba(56,189,248,0.05)' }
+              ])
+            },
+            markPoint: {
+              symbolSize: 48,
+              data: [
+                {
+                  name: 'Massimo',
+                  value: values[maxIdx],
+                  xAxis: maxIdx,
+                  yAxis: values[maxIdx],
+                  symbol: 'pin',
+                  itemStyle: { color: '#22c55e' },
+                  label: { formatter: 'MAX', color: '#fff', fontWeight: 'bold' }
+                },
+                {
+                  name: 'Minimo',
+                  value: values[minIdx],
+                  xAxis: minIdx,
+                  yAxis: values[minIdx],
+                  symbol: 'pin',
+                  itemStyle: { color: '#ef4444' },
+                  label: { formatter: 'MIN', color: '#fff', fontWeight: 'bold' }
+                }
+              ]
+            }
+          }
+        ];
+
+        chart.setOption(option, true);
+        setStatus('Dati caricati.');
+      } catch (err) {
+        console.error(err);
+        setStatus(`Errore nel caricamento: ${err.message}. Uso dati di fallback.`);
+        // Fallback: dati statici
+        chart.setOption({
+          ...baseOption(),
+          title: { text: 'Esempio (fallback)', left: 'center' },
+          xAxis: { type: 'category', boundaryGap: true, data: ['2019','2020','2021','2022','2023','2024'] },
+          series: [
+            { 
+              name: 'Precipitazioni', 
+              type: 'line',
+              data: [800, 950, 700, 1100, 900, 850], 
+              itemStyle: { color: '#38bdf8' },
+              lineStyle: { width: 3, color: '#38bdf8' },
+              symbol: 'circle',
+              symbolSize: 10,
+              smooth: true, // Linea curva
+              areaStyle: {
+                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(56,189,248,0.5)' },
+                  { offset: 1, color: 'rgba(56,189,248,0.05)' }
+                ])
+              },
+              markPoint: {
+                symbolSize: 48,
+                data: [
+                  {
+                    name: 'Massimo',
+                    value: 1100,
+                    xAxis: 3,
+                    yAxis: 1100,
+                    symbol: 'pin',
+                    itemStyle: { color: '#22c55e' },
+                    label: { formatter: 'MAX', color: '#fff', fontWeight: 'bold' }
+                  },
+                  {
+                    name: 'Minimo',
+                    value: 700,
+                    xAxis: 2,
+                    yAxis: 700,
+                    symbol: 'pin',
+                    itemStyle: { color: '#ef4444' },
+                    label: { formatter: 'MIN', color: '#fff', fontWeight: 'bold' }
+                  }
+                ]
+              }
+            }
+          ]
+        }, true);
+      }
+    }
+
+    // Resize responsivo
+    window.addEventListener('resize', () => chart.resize());
+    reloadBtn.addEventListener('click', () => loadData());
+
+    // Avvio
+    loadData();
+  </script>
+</body>
+</html>
