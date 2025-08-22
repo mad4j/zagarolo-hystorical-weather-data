@@ -250,7 +250,8 @@ Esempi:
     
     if failed > 0:
         logger.warning(f"Download completato con {failed} errori")
-        sys.exit(1)
+        logger.info("Continuando comunque per permettere il commit dei dati "
+                    "disponibili")
     else:
         logger.info("Download completato con successo!")
 
