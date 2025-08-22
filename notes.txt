@@ -14,11 +14,11 @@ sqlite3 weather.db
 SELECT time, temperature_2m_max
 FROM daily
 ORDER BY temperature_2m_max DESC
-LIMIT 1;
+LIMIT 3;
 
 SELECT time, temperature_2m_min
 FROM daily
 ORDER BY temperature_2m_min ASC
-LIMIT 1;
+LIMIT 3;
 
 SELECT MIN(time) AS data_minima, MAX(time) AS data_massima FROM daily;

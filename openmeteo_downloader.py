@@ -100,9 +100,13 @@ class OpenMeteoDownloader:
         # Create output directory if it doesn't exist
         os.makedirs(output_dir, exist_ok=True)
         
-        # Set date range for the entire year
+        # Set date range: if year is current year, end_date is yesterday
         self.start_date = f"{year}-01-01"
-        self.end_date = f"{year}-12-31"
+        today = datetime.now().date()
+        if year == today.year:
+            self.end_date = (today - timedelta(days=1)).strftime("%Y-%m-%d")
+        else:
+            self.end_date = f"{year}-12-31"
         
     def download_data(self, 
                      hourly_vars: Optional[List[str]] = None,
