@@ -1,6 +1,17 @@
 # zagarolo-hystorical-weather-data
 Zagarolo historical weather data
 
+## GitHub Actions Workflow
+
+### Download Weather Data
+You can automatically download weather data using the GitHub Actions workflow:
+
+1. Go to the **Actions** tab in this repository
+2. Select **Download Weather Data** workflow
+3. Click **Run workflow**
+4. Enter the starting year for download
+5. The workflow will download new data and automatically commit it to the repository
+
 ## Scripts Available
 
 ### global_downloader.py
