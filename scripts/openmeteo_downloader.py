@@ -4,16 +4,16 @@ Open-Meteo Historical Weather Data Downloader
 Downloads all available historical weather data for a specific year and location
 """
 
-import requests
-import json
-import csv
-import pandas as pd
-from datetime import datetime, timedelta
-import time
-import os
 import argparse
-from typing import Dict, List, Optional, Tuple
+import json
 import logging
+import os
+import time
+from datetime import datetime, timedelta
+from typing import Dict, List, Optional
+
+import pandas as pd
+import requests
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
