@@ -42,6 +42,7 @@ class GlobalDownloader:
         self.output_dir = output_dir
         self.start_year = start_year
         self.current_year = datetime.now().year
+        self.default_end_year = self.current_year - 1  # Modifica: default = anno precedente
         self.downloader_script = "openmeteo_downloader.py"
         self.enable_pause = enable_pause
         
@@ -98,15 +99,15 @@ class GlobalDownloader:
         Scarica tutti i dati dal start_year all'end_year
         
         Args:
-            end_year: Anno finale (default: anno corrente)
+            end_year: Anno finale (default: anno precedente a quello corrente)
             resume_from: Anno da cui riprendere il download (default: start_year)
             
         Returns:
             Tupla (successi, fallimenti)
         """
         if end_year is None:
-            end_year = self.current_year
-            
+            end_year = self.default_end_year  # Modifica: usa anno precedente
+        
         if resume_from is None:
             resume_from = self.start_year
             
@@ -180,8 +181,8 @@ def main():
         formatter_class=argparse.RawDescriptionHelpFormatter,
         epilog="""
 Esempi:
-  %(prog)s                          # Scarica dal 1945 ad oggi
-  %(prog)s --start-year 2000        # Scarica dal 2000 ad oggi  
+  %(prog)s                          # Scarica dal 1945 all'anno precedente
+  %(prog)s --start-year 2000        # Scarica dal 2000 all'anno precedente  
   %(prog)s --end-year 2020          # Scarica dal 1945 al 2020
   %(prog)s --resume-from 2010       # Riprende dal 2010
   %(prog)s --check-existing         # Mostra solo gli anni già scaricati
@@ -244,7 +245,7 @@ Esempi:
     
     # Esegui il download
     successful, failed = downloader.download_all(
-        end_year=args.end_year,
+        end_year=args.end_year if args.end_year is not None else downloader.default_end_year,
         resume_from=args.resume_from
     )
     
