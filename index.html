@@ -3,36 +3,225 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ECharts + JSON esterno — esempio minimale</title>
-  <!-- ECharts v5 CDN -->
+  <title>Precipitazioni annuali Zagarolo</title>
+  <!-- ECharts v5 CDN with fallback -->
+  <script>
+    // Check if ECharts loaded, otherwise create a fallback
+    function loadECharts() {
+      if (typeof echarts !== 'undefined') {
+        return Promise.resolve();
+      }
+      
+      // Fallback: Try to load from alternative CDN
+      return new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/echarts@5/dist/echarts.min.js';
+        script.onload = resolve;
+        script.onerror = () => {
+          // If all CDNs fail, create a simple visualization fallback
+          window.echarts = createSimpleChartFallback();
+          resolve();
+        };
+        document.head.appendChild(script);
+      });
+    }
+    
+    // Simple chart fallback that creates a basic chart
+    function createSimpleChartFallback() {
+      return {
+        graphic: {
+          LinearGradient: function(x1, y1, x2, y2, colorStops) {
+            return `linear-gradient(to bottom, ${colorStops[0].color}, ${colorStops[1].color})`;
+          }
+        },
+        init: (container) => ({
+          setOption: (option) => {
+            // Create a simple fallback visualization showing recent years only
+            const allData = option.series ? option.series[0].data : [800, 950, 700, 1100, 900, 850];
+            const allYears = option.xAxis && option.xAxis[0] ? option.xAxis[0].data : ['2019','2020','2021','2022','2023','2024'];
+            
+            // Show only last 10 years to prevent overcrowding
+            const recentCount = Math.min(10, allData.length);
+            const data = allData.slice(-recentCount);
+            const years = allYears.slice(-recentCount);
+            
+            const maxVal = Math.max(...data);
+            const minVal = Math.min(...data);
+            const maxIdx = data.indexOf(maxVal);
+            const minIdx = data.indexOf(minVal);
+            
+            let html = `
+              <div style="padding: 10px; height: 100%; display: flex; flex-direction: column; overflow: hidden;">
+                <div style="text-align: center; margin-bottom: 6px; flex-shrink: 0;">
+                  <h3 style="margin: 0; font-size: 13px; color: #1a202c; font-weight: 600;">Precipitazioni annuali (ultimi ${recentCount} anni)</h3>
+                  <p style="margin: 2px 0 0 0; font-size: 10px; color: #666;">📊 Versione semplificata - Totale anni disponibili: ${allData.length}</p>
+                </div>
+                <div style="flex: 1; display: flex; align-items: end; justify-content: space-around; border-bottom: 2px solid #e5e7eb; min-height: 0; padding: 0 4px;">
+            `;
+            
+            data.forEach((value, index) => {
+              const height = Math.max((value / maxVal) * 85, 8); // Min 8% height
+              const isMax = index === maxIdx;
+              const isMin = index === minIdx;
+              const color = isMax ? '#22c55e' : isMin ? '#ef4444' : '#2563eb';
+              
+              html += `
+                <div style="display: flex; flex-direction: column; align-items: center; margin: 0 1px; flex: 1; max-width: 40px;">
+                  <div style="background: ${color}; width: 100%; height: ${height}%; min-height: 8px; border-radius: 2px 2px 0 0; opacity: 0.85; position: relative;">
+                    ${isMax || isMin ? `<div style="position: absolute; top: -16px; left: 50%; transform: translateX(-50%); font-size: 8px; color: ${color}; font-weight: bold;">${isMax ? 'MAX' : 'MIN'}</div>` : ''}
+                  </div>
+                  <div style="font-size: 9px; margin-top: 2px; color: #555; font-weight: 500; text-align: center;">${years[index]}</div>
+                  <div style="font-size: 8px; color: #777; text-align: center;">${value}mm</div>
+                </div>
+              `;
+            });
+            
+            html += `
+                </div>
+                <div style="text-align: center; margin-top: 4px; font-size: 9px; color: #888; flex-shrink: 0;">
+                  Max: ${maxVal}mm (${years[maxIdx]}) • Min: ${minVal}mm (${years[minIdx]})
+                </div>
+              </div>
+            `;
+            
+            container.innerHTML = html;
+          },
+          resize: () => {}
+        })
+      };
+    }
+  </script>
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <style>
-    :root { --bg: #fff; --fg: #222; --muted:#888; }
-    html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
-    header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: baseline; gap: 12px; background: #f9fafb; }
-    h1 { font-size: 18px; margin: 0; }
-    .hint { color: var(--muted); font-size: 13px; }
-    #app { height: calc(100% - 60px); display: grid; grid-template-rows: 48px 1fr; }
-    #controls { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
-    #status { font-size: 12px; color: var(--muted); }
-    #chart { width: 100%; height: 100%; background: #fff; }
-    button { background:#f3f4f6; color:var(--fg); border:1px solid #d1d5db; border-radius:12px; padding:8px 12px; cursor:pointer; }
-    button:hover { background:#e5e7eb; }
-    code { background:#f3f4f6; padding:2px 6px; border-radius:6px; }
+    :root {
+      --bg: #f6f8fa;
+      --fg: #1a202c;
+      --muted: #6b7280;
+      --primary: #2563eb;
+      --accent: #0ea5e9;
+      --border: #e5e7eb;
+      --header-bg: #fff;
+      --card-bg: #fff;
+    }
+    html, body {
+      height: 100vh;
+      margin: 0;
+      background: var(--bg);
+      color: var(--fg);
+      font-family: 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
+      font-size: 14px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+    header {
+      padding: 12px 24px 6px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--header-bg);
+      display: flex;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 3px;
+      box-shadow: 0 2px 8px 0 rgba(0,0,0,0.03);
+      flex-shrink: 0;
+    }
+    h1 {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin: 0;
+      color: var(--primary);
+      letter-spacing: -0.5px;
+      line-height: 1.2;
+    }
+    .hint {
+      color: var(--muted);
+      font-size: 0.85rem;
+      margin: 0;
+      line-height: 1.3;
+    }
+    #app {
+      flex: 1;
+      min-height: 0;
+      display: flex;
+      flex-direction: column;
+      background: var(--bg);
+      overflow: hidden;
+    }
+    #controls {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 24px;
+      border-bottom: 1px solid var(--border);
+      background: var(--card-bg);
+      min-height: 32px;
+      flex-shrink: 0;
+    }
+    #status {
+      font-size: 0.85rem;
+      color: var(--muted);
+      margin-left: 6px;
+    }
+    #chart {
+      flex: 1;
+      width: 100%;
+      min-height: 0;
+      background: var(--card-bg);
+      border-radius: 0 0 8px 8px;
+      box-shadow: 0 2px 12px 0 rgba(0,0,0,0.04);
+      overflow: hidden;
+    }
+    button {
+      background: var(--primary);
+      color: #fff;
+      border: none;
+      border-radius: 6px;
+      padding: 6px 14px;
+      font-size: 0.9rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: background 0.15s;
+      box-shadow: 0 1px 2px 0 rgba(0,0,0,0.03);
+    }
+    button:hover {
+      background: var(--accent);
+    }
+    code {
+      background: #e0e7ef;
+      color: var(--primary);
+      padding: 2px 8px;
+      border-radius: 6px;
+      font-size: 0.95em;
+    }
+    @media (max-width: 600px) {
+      header, #controls { 
+        padding-left: 12px; 
+        padding-right: 12px; 
+      }
+      h1 { 
+        font-size: 1.25rem; 
+      }
+      .hint {
+        font-size: 0.8rem;
+      }
+      #app { 
+        height: calc(100vh - 60px); 
+      }
+    }
   </style>
 </head>
 <body>
   <header>
-    <h1>Precipitazioni annuali da <code>precipitations_per_year.json</code></h1>
-    <span class="hint">Servi questa pagina e il file <code>precipitations_per_year.json</code> dalla stessa origine.</span>
+    <h1>Precipitazioni annuali — Zagarolo</h1>
+    <span class="hint">Analisi storica delle precipitazioni e nevicate.<br>Fonte dati: <code>precipitations_per_year.json</code></span>
   </header>
 
   <div id="app">
     <div id="controls">
-      <button id="reload">Ricarica dati</button>
+      <button id="reload" title="Ricarica i dati dal file JSON">🔄 Ricarica dati</button>
       <span id="status">Pronto.</span>
     </div>
-    <div id="chart" role="img" aria-label="Grafico barre precipitazioni annuali"></div>
+    <div id="chart" role="img" aria-label="Grafico precipitazioni e neve annuali"></div>
   </div>
 
   <script>
@@ -45,7 +234,13 @@
     const chartEl = document.getElementById('chart');
     const statusEl = document.getElementById('status');
     const reloadBtn = document.getElementById('reload');
-    const chart = echarts.init(chartEl, null, { renderer: 'canvas' });
+    
+    // Initialize chart after ECharts loads
+    loadECharts().then(() => {
+      window.chart = echarts.init(chartEl, null, { renderer: 'canvas' });
+      // Start the application
+      loadData();
+    });
 
     function setStatus(msg) {
       statusEl.textContent = msg;
@@ -53,10 +248,16 @@
 
     function baseOption() {
       return {
-        backgroundColor: '#fff',
-        tooltip: { trigger: 'axis' },
+        backgroundColor: 'transparent',
+        tooltip: {
+          trigger: 'axis',
+          backgroundColor: '#fff',
+          borderColor: '#dbeafe',
+          borderWidth: 1,
+          textStyle: { color: '#222', fontSize: 14 }
+        },
         legend: { show: false },
-        grid: { left: 48, right: 24, top: 48, bottom: 32 },
+        grid: { left: 48, right: 28, top: 40, bottom: 32 },
         xAxis: { type: 'category', boundaryGap: true, axisTick: { show: false } },
         yAxis: { type: 'value', name: 'mm', splitLine: { show: true } },
         series: []
@@ -88,31 +289,52 @@
         const maxYNeve = maxNeve > 0 ? maxNeve * 3 : 10;
 
         const option = baseOption();
-        option.title = { text: 'Precipitazioni e neve totali per anno', left: 'center', textStyle: { color: '#222' } };
+  // Nessun titolo nel grafico
         option.xAxis = [
-          { type: 'category', boundaryGap: true, axisTick: { show: false }, data: years, axisLabel: { color: '#222' } }
+          {
+            type: 'category',
+            boundaryGap: true,
+            axisTick: { show: false },
+            data: years,
+            axisLabel: { color: '#1a202c', fontWeight: 500, fontSize: 11 }
+          }
         ];
         option.yAxis = [
-          { type: 'value', name: 'mm pioggia', splitLine: { show: true, lineStyle: { color: '#e5e7eb' } }, axisLabel: { color: '#222' }, nameTextStyle: { color: '#222' } },
-          { type: 'value', name: 'cm neve', splitLine: { show: false }, position: 'right', axisLabel: { color: '#6366f1' }, nameTextStyle: { color: '#6366f1' }, max: maxYNeve }
+          {
+            type: 'value',
+            name: 'mm pioggia',
+            splitLine: { show: true, lineStyle: { color: '#e5e7eb' } },
+            axisLabel: { color: '#1a202c', fontWeight: 500, fontSize: 11 },
+            nameTextStyle: { color: '#1a202c', fontWeight: 600, fontSize: 12 }
+          },
+          {
+            type: 'value',
+            name: 'cm neve',
+            splitLine: { show: false },
+            position: 'right',
+            axisLabel: { color: '#2563eb', fontWeight: 500, fontSize: 11 },
+            nameTextStyle: { color: '#2563eb', fontWeight: 600, fontSize: 12 },
+            max: maxYNeve
+          }
         ];
-        option.legend = { data: ['Precipitazioni', 'Neve'], top: 8, textStyle: { color: '#222' } };
+        option.legend = { data: ['Precipitazioni', 'Neve'], top: 8, textStyle: { color: '#1a202c', fontWeight: 500, fontSize: 12 } };
         option.series = [
           {
             name: 'Precipitazioni',
             type: 'line',
             yAxisIndex: 0,
             data: valuesPrecip,
-            itemStyle: { color: '#0ea5e9' },
-            lineStyle: { width: 3, color: '#0ea5e9' },
+            itemStyle: { color: '#2563eb' },
+            lineStyle: { width: 3, color: '#2563eb' },
             symbol: 'circle',
             symbolSize: 10,
             smooth: 0.7,
             areaStyle: {
-              color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(14,165,233,0.25)' },
-                { offset: 1, color: 'rgba(14,165,233,0.03)' }
-              ])
+              color: (typeof echarts !== 'undefined' && echarts.graphic) ? 
+                new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                  { offset: 0, color: 'rgba(37,99,235,0.18)' },
+                  { offset: 1, color: 'rgba(37,99,235,0.01)' }
+                ]) : 'rgba(37,99,235,0.1)'
             },
             markPoint: {
               symbolSize: 48,
@@ -146,10 +368,11 @@
             type: 'bar',
             yAxisIndex: 1,
             data: valuesNeve,
-            itemStyle: { 
-              color: '#fff', 
-              borderColor: '#bbb', 
-              borderWidth: 2 
+            itemStyle: {
+              color: '#0ea5e9',
+              opacity: 0.18,
+              borderColor: '#2563eb',
+              borderWidth: 2
             },
             barWidth: '60%',
             emphasis: { focus: 'series' },
@@ -162,12 +385,12 @@
                   xAxis: valuesNeve.indexOf(maxNeve),
                   yAxis: maxNeve,
                   symbol: 'pin',
-                  itemStyle: { 
-                    color: '#fff', 
-                    borderColor: '#444', // bordo meno marcato
-                    borderWidth: 1.5 
+                  itemStyle: {
+                    color: '#0ea5e9',
+                    borderColor: '#2563eb',
+                    borderWidth: 1.5
                   },
-                  label: { formatter: years[valuesNeve.indexOf(maxNeve)], color: '#222', fontWeight: 'bold', fontSize: 10 }
+                  label: { formatter: years[valuesNeve.indexOf(maxNeve)], color: '#2563eb', fontWeight: 'bold', fontSize: 10 }
                 }
               ]
             }
@@ -184,31 +407,51 @@
         const fallbackMaxYNeve = fallbackMaxNeve * 3;
         chart.setOption({
           ...baseOption(),
-          title: { text: 'Esempio (fallback)', left: 'center', textStyle: { color: '#222' } },
+          // Nessun titolo nel fallback
           xAxis: [
-            { type: 'category', boundaryGap: true, data: ['2019','2020','2021','2022','2023','2024'], axisLabel: { color: '#222' } }
+            {
+              type: 'category',
+              boundaryGap: true,
+              data: ['2019','2020','2021','2022','2023','2024'],
+              axisLabel: { color: '#1a202c', fontWeight: 500, fontSize: 11 }
+            }
           ],
           yAxis: [
-            { type: 'value', name: 'mm pioggia', splitLine: { show: true, lineStyle: { color: '#e5e7eb' } }, axisLabel: { color: '#222' }, nameTextStyle: { color: '#222' } },
-            { type: 'value', name: 'cm neve', splitLine: { show: false }, position: 'right', axisLabel: { color: '#6366f1' }, nameTextStyle: { color: '#6366f1' }, max: fallbackMaxYNeve }
+            {
+              type: 'value',
+              name: 'mm pioggia',
+              splitLine: { show: true, lineStyle: { color: '#e5e7eb' } },
+              axisLabel: { color: '#1a202c', fontWeight: 500, fontSize: 11 },
+              nameTextStyle: { color: '#1a202c', fontWeight: 600, fontSize: 12 }
+            },
+            {
+              type: 'value',
+              name: 'cm neve',
+              splitLine: { show: false },
+              position: 'right',
+              axisLabel: { color: '#2563eb', fontWeight: 500, fontSize: 11 },
+              nameTextStyle: { color: '#2563eb', fontWeight: 600, fontSize: 12 },
+              max: fallbackMaxYNeve
+            }
           ],
-          legend: { data: ['Precipitazioni', 'Neve'], top: 8, textStyle: { color: '#222' } },
+          legend: { data: ['Precipitazioni', 'Neve'], top: 8, textStyle: { color: '#1a202c', fontWeight: 500, fontSize: 12 } },
           series: [
-            { 
-              name: 'Precipitazioni', 
+            {
+              name: 'Precipitazioni',
               type: 'line',
               yAxisIndex: 0,
-              data: [800, 950, 700, 1100, 900, 850], 
-              itemStyle: { color: '#0ea5e9' },
-              lineStyle: { width: 3, color: '#0ea5e9' },
+              data: [800, 950, 700, 1100, 900, 850],
+              itemStyle: { color: '#2563eb' },
+              lineStyle: { width: 3, color: '#2563eb' },
               symbol: 'circle',
               symbolSize: 10,
               smooth: 0.7,
               areaStyle: {
-                color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                  { offset: 0, color: 'rgba(14,165,233,0.25)' },
-                  { offset: 1, color: 'rgba(14,165,233,0.03)' }
-                ])
+                color: (typeof echarts !== 'undefined' && echarts.graphic) ? 
+                  new echarts.graphic.LinearGradient(0, 0, 0, 1, [
+                    { offset: 0, color: 'rgba(37,99,235,0.18)' },
+                    { offset: 1, color: 'rgba(37,99,235,0.01)' }
+                  ]) : 'rgba(37,99,235,0.1)'
               },
               markPoint: {
                 symbolSize: 48,
@@ -220,7 +463,6 @@
                     yAxis: 1100,
                     symbol: 'pin',
                     itemStyle: { color: '#22c55e' },
-                    // Mostra l'anno come etichetta
                     label: { formatter: '2022', color: '#fff', fontWeight: 'bold' }
                   },
                   {
@@ -230,7 +472,6 @@
                     yAxis: 700,
                     symbol: 'pin',
                     itemStyle: { color: '#ef4444' },
-                    // Mostra l'anno come etichetta
                     label: { formatter: '2021', color: '#fff', fontWeight: 'bold' }
                   }
                 ]
@@ -241,8 +482,11 @@
               type: 'bar',
               yAxisIndex: 1,
               data: [13, 0, 8, 0, 1, 3],
-              itemStyle: { 
-                color: '#6366f1' 
+              itemStyle: {
+                color: '#0ea5e9',
+                opacity: 0.18,
+                borderColor: '#2563eb',
+                borderWidth: 2
               },
               barWidth: '60%',
               emphasis: { focus: 'series' },
@@ -255,12 +499,12 @@
                     xAxis: 0,
                     yAxis: 13,
                     symbol: 'pin',
-                    itemStyle: { 
-                      color: '#fff', 
-                      borderColor: '#444', // bordo meno marcato
-                      borderWidth: 1.5 
+                    itemStyle: {
+                      color: '#0ea5e9',
+                      borderColor: '#2563eb',
+                      borderWidth: 1.5
                     },
-                    label: { formatter: '2019', color: '#222', fontWeight: 'bold', fontSize: 10 }
+                    label: { formatter: '2019', color: '#2563eb', fontWeight: 'bold', fontSize: 10 }
                   }
                 ]
               }
@@ -271,11 +515,10 @@
     }
 
     // Resize responsivo
-    window.addEventListener('resize', () => chart.resize());
+    window.addEventListener('resize', () => {
+      if (window.chart) chart.resize();
+    });
     reloadBtn.addEventListener('click', () => loadData());
-
-    // Avvio
-    loadData();
   </script>
 </body>
 </html>
