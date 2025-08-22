@@ -14,7 +14,12 @@ sqlite3 weather.db
 SELECT time, temperature_2m_max
 FROM daily
 ORDER BY temperature_2m_max DESC
-LIMIT 3;
+LIMIT 10;
+
+SELECT time, temperature_2m_max, temperature_2m_min
+FROM daily
+ORDER BY temperature_2m_max DESC, temperature_2m_min
+LIMIT 10;
 
 SELECT time, temperature_2m_min
 FROM daily
