@@ -42,10 +42,9 @@ class GlobalDownloader:
         self.output_dir = output_dir
         self.start_year = start_year
         self.current_year = datetime.now().year
-        self.default_end_year = self.current_year - 1  # Modifica: default = anno precedente
+        self.default_end_year = self.current_year  # Default: anno corrente
         self.downloader_script = "openmeteo_downloader.py"
         self.enable_pause = enable_pause
-        
         # Ensure output directory exists
         os.makedirs(self.output_dir, exist_ok=True)
         
@@ -106,7 +105,7 @@ class GlobalDownloader:
             Tupla (successi, fallimenti)
         """
         if end_year is None:
-            end_year = self.default_end_year  # Modifica: usa anno precedente
+            end_year = self.default_end_year  # Default: anno corrente
         
         if resume_from is None:
             resume_from = self.start_year
