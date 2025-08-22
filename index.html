@@ -7,18 +7,18 @@
   <!-- ECharts v5 CDN -->
   <script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
   <style>
-    :root { --bg: #0b0f1a; --fg: #e6edf3; --muted:#9aa4b2; }
+    :root { --bg: #fff; --fg: #222; --muted:#888; }
     html, body { height: 100%; margin: 0; background: var(--bg); color: var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; }
-    header { padding: 16px 20px; border-bottom: 1px solid #1e293b; display: flex; align-items: baseline; gap: 12px; }
+    header { padding: 16px 20px; border-bottom: 1px solid #e5e7eb; display: flex; align-items: baseline; gap: 12px; background: #f9fafb; }
     h1 { font-size: 18px; margin: 0; }
     .hint { color: var(--muted); font-size: 13px; }
     #app { height: calc(100% - 60px); display: grid; grid-template-rows: 48px 1fr; }
-    #controls { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #1e293b; }
+    #controls { display: flex; align-items: center; gap: 8px; padding: 8px 16px; border-bottom: 1px solid #e5e7eb; background: #f9fafb; }
     #status { font-size: 12px; color: var(--muted); }
-    #chart { width: 100%; height: 100%; }
-    button { background:#111827; color:var(--fg); border:1px solid #334155; border-radius:12px; padding:8px 12px; cursor:pointer; }
-    button:hover { background:#0f172a; }
-    code { background:#111827; padding:2px 6px; border-radius:6px; }
+    #chart { width: 100%; height: 100%; background: #fff; }
+    button { background:#f3f4f6; color:var(--fg); border:1px solid #d1d5db; border-radius:12px; padding:8px 12px; cursor:pointer; }
+    button:hover { background:#e5e7eb; }
+    code { background:#f3f4f6; padding:2px 6px; border-radius:6px; }
   </style>
 </head>
 <body>
@@ -38,8 +38,7 @@
   <script>
     // ⬇️ Struttura attesa di precipitations_per_year.json:
     // [
-    //   { "year": "2019", "total_precipitation": 800.5 },
-    //   { "year": "2020", "total_precipitation": 950.2 },
+    //   { "anno": "2019", "totale_precipitazioni": 800.5, "totale_neve": 13 },
     //   ...
     // ]
 
@@ -54,7 +53,7 @@
 
     function baseOption() {
       return {
-        backgroundColor: 'transparent',
+        backgroundColor: '#fff',
         tooltip: { trigger: 'axis' },
         legend: { show: false },
         grid: { left: 48, right: 24, top: 48, bottom: 32 },
@@ -72,55 +71,82 @@
         const payload = await res.json();
 
         // Estraggo anni e valori
-        const years = payload.map(row => row.year ?? row.anno);
-        const values = payload.map(row => row.total_precipitation ?? row.totale_precipitazioni);
+        const years = payload.map(row => row.anno ?? row.year);
+        const valuesPrecip = payload.map(row => row.totale_precipitazioni ?? row.total_precipitation);
+        const valuesNeve = payload.map(row => row.totale_neve ?? row.total_snow);
 
-        // Trova indice max e min
-        const maxIdx = values.indexOf(Math.max(...values));
-        const minIdx = values.indexOf(Math.min(...values));
+        // Trova indice max e min per precipitazioni
+        const maxIdx = valuesPrecip.indexOf(Math.max(...valuesPrecip));
+        const minIdx = valuesPrecip.indexOf(Math.min(...valuesPrecip));
+
+        // Calcola il massimo della neve e della pioggia
+        const maxNeve = Math.max(...valuesNeve);
+        const maxPrecip = Math.max(...valuesPrecip);
+
+        // Imposta il massimo della yAxis di destra (neve) in modo che il valore massimo della neve
+        // sia circa 1/3 dell'altezza del grafico (cioè 1/3 del massimo della yAxis di sinistra)
+        const maxYNeve = maxNeve > 0 ? maxNeve * 3 : 10;
 
         const option = baseOption();
-        option.title = { text: 'Precipitazioni totali per anno', left: 'center' };
-        option.xAxis.data = years;
+        option.title = { text: 'Precipitazioni e neve totali per anno', left: 'center', textStyle: { color: '#222' } };
+        option.xAxis = [
+          { type: 'category', boundaryGap: true, axisTick: { show: false }, data: years, axisLabel: { color: '#222' } }
+        ];
+        option.yAxis = [
+          { type: 'value', name: 'mm pioggia', splitLine: { show: true, lineStyle: { color: '#e5e7eb' } }, axisLabel: { color: '#222' }, nameTextStyle: { color: '#222' } },
+          { type: 'value', name: 'cm neve', splitLine: { show: false }, position: 'right', axisLabel: { color: '#6366f1' }, nameTextStyle: { color: '#6366f1' }, max: maxYNeve }
+        ];
+        option.legend = { data: ['Precipitazioni', 'Neve'], top: 8, textStyle: { color: '#222' } };
         option.series = [
           {
             name: 'Precipitazioni',
             type: 'line',
-            data: values,
-            itemStyle: { color: '#38bdf8' },
-            lineStyle: { width: 3, color: '#38bdf8' },
+            yAxisIndex: 0,
+            data: valuesPrecip,
+            itemStyle: { color: '#0ea5e9' },
+            lineStyle: { width: 3, color: '#0ea5e9' },
             symbol: 'circle',
             symbolSize: 10,
-            smooth: true, // Linea curva
+            smooth: 0.7,
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: 'rgba(56,189,248,0.5)' },
-                { offset: 1, color: 'rgba(56,189,248,0.05)' }
+                { offset: 0, color: 'rgba(14,165,233,0.25)' },
+                { offset: 1, color: 'rgba(14,165,233,0.03)' }
               ])
             },
             markPoint: {
               symbolSize: 48,
+              label: { fontSize: 10 }, // Imposta la dimensione del font per tutte le etichette
               data: [
                 {
                   name: 'Massimo',
-                  value: values[maxIdx],
+                  value: valuesPrecip[maxIdx],
                   xAxis: maxIdx,
-                  yAxis: values[maxIdx],
+                  yAxis: valuesPrecip[maxIdx],
                   symbol: 'pin',
                   itemStyle: { color: '#22c55e' },
-                  label: { formatter: 'MAX', color: '#fff', fontWeight: 'bold' }
+                  label: { formatter: 'MAX', color: '#fff', fontWeight: 'bold', fontSize: 10 }
                 },
                 {
                   name: 'Minimo',
-                  value: values[minIdx],
+                  value: valuesPrecip[minIdx],
                   xAxis: minIdx,
-                  yAxis: values[minIdx],
+                  yAxis: valuesPrecip[minIdx],
                   symbol: 'pin',
                   itemStyle: { color: '#ef4444' },
-                  label: { formatter: 'MIN', color: '#fff', fontWeight: 'bold' }
+                  label: { formatter: 'MIN', color: '#fff', fontWeight: 'bold', fontSize: 10 }
                 }
               ]
             }
+          },
+          {
+            name: 'Neve',
+            type: 'bar',
+            yAxisIndex: 1,
+            data: valuesNeve,
+            itemStyle: { color: '#6366f1' },
+            barWidth: '60%',
+            emphasis: { focus: 'series' }
           }
         ];
 
@@ -130,24 +156,34 @@
         console.error(err);
         setStatus(`Errore nel caricamento: ${err.message}. Uso dati di fallback.`);
         // Fallback: dati statici
+        const fallbackMaxNeve = 13;
+        const fallbackMaxYNeve = fallbackMaxNeve * 3;
         chart.setOption({
           ...baseOption(),
-          title: { text: 'Esempio (fallback)', left: 'center' },
-          xAxis: { type: 'category', boundaryGap: true, data: ['2019','2020','2021','2022','2023','2024'] },
+          title: { text: 'Esempio (fallback)', left: 'center', textStyle: { color: '#222' } },
+          xAxis: [
+            { type: 'category', boundaryGap: true, data: ['2019','2020','2021','2022','2023','2024'], axisLabel: { color: '#222' } }
+          ],
+          yAxis: [
+            { type: 'value', name: 'mm pioggia', splitLine: { show: true, lineStyle: { color: '#e5e7eb' } }, axisLabel: { color: '#222' }, nameTextStyle: { color: '#222' } },
+            { type: 'value', name: 'cm neve', splitLine: { show: false }, position: 'right', axisLabel: { color: '#6366f1' }, nameTextStyle: { color: '#6366f1' }, max: fallbackMaxYNeve }
+          ],
+          legend: { data: ['Precipitazioni', 'Neve'], top: 8, textStyle: { color: '#222' } },
           series: [
             { 
               name: 'Precipitazioni', 
               type: 'line',
+              yAxisIndex: 0,
               data: [800, 950, 700, 1100, 900, 850], 
-              itemStyle: { color: '#38bdf8' },
-              lineStyle: { width: 3, color: '#38bdf8' },
+              itemStyle: { color: '#0ea5e9' },
+              lineStyle: { width: 3, color: '#0ea5e9' },
               symbol: 'circle',
               symbolSize: 10,
-              smooth: true, // Linea curva
+              smooth: 0.7,
               areaStyle: {
                 color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                  { offset: 0, color: 'rgba(56,189,248,0.5)' },
-                  { offset: 1, color: 'rgba(56,189,248,0.05)' }
+                  { offset: 0, color: 'rgba(14,165,233,0.25)' },
+                  { offset: 1, color: 'rgba(14,165,233,0.03)' }
                 ])
               },
               markPoint: {
@@ -173,6 +209,15 @@
                   }
                 ]
               }
+            },
+            {
+              name: 'Neve',
+              type: 'bar',
+              yAxisIndex: 1,
+              data: [13, 0, 8, 0, 1, 3],
+              itemStyle: { color: '#6366f1' },
+              barWidth: '60%',
+              emphasis: { focus: 'series' }
             }
           ]
         }, true);
