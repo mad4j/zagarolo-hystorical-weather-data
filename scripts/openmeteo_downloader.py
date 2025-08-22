@@ -433,8 +433,8 @@ def main():
         description='Download historical weather data from Open-Meteo API'
     )
 
-    parser.add_argument('latitude', type=float, help='Latitude of the location')
-    parser.add_argument('longitude', type=float, help='Longitude of the location')
+    parser.add_argument('latitude', type=float, nargs='?', default=41.837610, help='Latitude of the location (default: 41.837610)')
+    parser.add_argument('longitude', type=float, nargs='?', default=12.831867, help='Longitude of the location (default: 12.831867)')
     parser.add_argument('year', type=int, help='Year to download data for')
 
     parser.add_argument('--output-dir', type=str, default='weather_data', help='Directory to save the downloaded data')
