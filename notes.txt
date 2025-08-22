@@ -16,10 +16,7 @@ FROM daily
 ORDER BY temperature_2m_max DESC
 LIMIT 10;
 
-SELECT time, apparent_temperature_max
-FROM daily
-ORDER BY apparent_temperature_max DESC
-LIMIT 10;
+sqlite3 -header weather.db '.read apparent_temperature_max.sql'
 
 SELECT time, temperature_2m_max, temperature_2m_min
 FROM daily
